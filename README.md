@@ -3,7 +3,7 @@
 ## A monad for parser construction: 
 # Parsing CSV files
 
-A good example of how practival monads are, is the one about parser combinators.
+A good example of how practical monads are, is the one about parser combinators.
 In this exercise, we will construct a little library of parser combinators.
 ```haskell
 parseCSV :: Parser [[String]]
