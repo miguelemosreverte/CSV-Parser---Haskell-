@@ -76,7 +76,14 @@ instance Applicative Parser where
                     Nothing -> Nothing
                     Just (f, s) -> runParser (fmap f fx) $ s )
 
-
+instance Monad Parser where
+    return = pureParser
+    (>>=) :: Parser a -> (a -> Parser b) -> Parser b
+    fa >>= k = P { runParser = monadRunner }
+        where monadRunner = (\input ->
+                case runParser fa $ input of
+                    Nothing -> Nothing
+                    Just (a, s) -> runParser (k a) $ s)
 
 -- Tests
 empty_input :: String
@@ -96,9 +103,35 @@ f_test = show
 test_funtor_empty = parse (fmap f_test test_parser) empty_input == fmap f_test (parse test_parser empty_input)
 test_funtor_no_empty = parse (fmap f_test test_parser) no_empty_input == fmap f_test (parse test_parser no_empty_input)
 
--- Applicative Law Tests
+-- Test Applicative Laws => Not yet finished
 test_applicative_empty = parse (pureParser f_test <*> test_parser) empty_input == Just "4"
 test_applicative_no_empty = parse (pureParser f_test <*> test_parser) no_empty_input == Nothing
+
+-- Test Monad Laws
+test_parsers p1 p2 input = (runParser p1 $ input) == (runParser p2 $ input)
+-- Left identity :: return a >>= f ≡ f a
+test_monad_left_identity = 
+    let a = 4
+        f = pureParser . (+1)
+        parserA = pureParser a >>= f
+        parserB = f a
+    in test_parsers parserA parserB ""
+-- Right identity :: m >>= return ≡ m
+test_monad_right_identity = 
+    let m = pureParser 4
+        parserA = m >>= return
+        parserB = m
+    in test_parsers parserA parserB  ""
+-- Associativity :: (m >>= f) >>= g ≡ m >>= (\x -> f x >>= g)
+test_monad_associativity = 
+    let m = pureParser 4
+        f = pureParser . (+1)
+        g = pureParser . (*2)
+        parserA = (m >>= f) >>= g
+        parserB = m >>= (\x -> f x >>= g)
+    in test_parsers parserA parserB ""
+
+
 
 tests = [test_no_parser_empty,
     test_no_parser_no_empty,
@@ -107,4 +140,7 @@ tests = [test_no_parser_empty,
     test_funtor_empty,
     test_funtor_no_empty,
     test_applicative_empty,
-    test_applicative_no_empty]
+    test_applicative_no_empty,
+    test_monad_left_identity,
+    test_monad_right_identity,
+    test_monad_associativity]
