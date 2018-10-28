@@ -103,33 +103,36 @@ test_parser = pureParser x
 f_test :: Int -> String
 f_test = show
 
--- Test Function
-test_parsers p1 p2 input = (runParser p1 $ input) == (runParser p2 $ input)
-
--- Test Functor Laws => Not yet finished
--- Identity :: fmap id = id
-test_functor_identity = 
-    let m = pureParser 4
-        parserA = id m
-        parserB = fmap id m
-    in test_parsers parserA parserB ""
--- Associativity :: fmap (g . h) = (fmap g) . (fmap h)
-test_functor_associativity = 
-    let m = pureParser 4
-        g = (*2)
-        h = (+1)
-        parserA = fmap (g . h) m
-        parserB = (fmap g) . (fmap h) $ m
-    in test_parsers parserA parserB ""
-
+-- Other Tests
+-- Functor
 test_funtor_empty = parse (fmap f_test test_parser) empty_input == fmap f_test (parse test_parser empty_input)
 test_funtor_no_empty = parse (fmap f_test test_parser) no_empty_input == fmap f_test (parse test_parser no_empty_input)
-
--- Test Applicative Laws => Not yet finished
+-- Applicative
 test_applicative_empty = parse (pureParser f_test <*> test_parser) empty_input == Just "4"
 test_applicative_no_empty = parse (pureParser f_test <*> test_parser) no_empty_input == Nothing
 
--- Test Monad Laws
+-- ## Test Laws Function ##
+test_parsers p1 p2 input = (runParser p1 $ input) == (runParser p2 $ input)
+
+-- ## Test Functor Laws ##
+-- Identity :: fmap id = id
+test_functor_identity = 
+    let m = pureParser 4
+        parserA = id $ m
+        parserB = fmap id $ m
+    in test_parsers parserA parserB ""
+-- Associativity :: fmap (f . g) = (fmap f) . (fmap g)
+test_functor_associativity = 
+    let m = pureParser 4
+        f = (*2)
+        g = (+1)
+        parserA = fmap (f . g) $ m
+        parserB = (fmap f) . (fmap g) $ m
+    in test_parsers parserA parserB ""
+
+-- ## Test Applicative Laws ## => [TODO] Not yet finished
+
+-- ## Test Monad Laws ##
 -- Left identity :: return a >>= f ≡ f a
 test_monad_left_identity = 
     let a = 4
@@ -152,6 +155,7 @@ test_monad_associativity =
         parserB = m >>= (\x -> f x >>= g)
     in test_parsers parserA parserB ""
 
+-- ## All Tests ##
 tests = [test_no_parser_empty,
     test_no_parser_no_empty,
     test_pure_empty,
