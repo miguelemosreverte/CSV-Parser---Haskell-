@@ -46,7 +46,7 @@ parse (pureParser x) "" == Just x
 xs ≠ "" ⇒ parse (pureParser x) xs == Nothing
 -}
 pureParser :: a -> Parser a
-pureParser a = P{ runParser = (\s -> Just(a, s) )}
+pureParser a = P { runParser = (\input -> Just(a, input) )}
 
 {-
 Deberías tener
@@ -56,12 +56,12 @@ parse (fmap (\x -> x + 2) pureParser 4) "" == fmap (\x -> x + 2) (parse (purePar
 -}
 instance Functor Parser where
     fmap :: (a -> b) -> Parser a -> Parser b
-    fmap f p = P{ runParser = (\input -> case runParser p $ input of
-            Nothing -> Nothing
-            Just (a, s) -> Just (f a, s)
-        )}
-
-
+    fmap f p = P { runParser = functorRunner }
+        where functorRunner = (\input ->  
+                case runParser p $ input of
+                    Nothing -> Nothing
+                    Just (a, s) -> Just (f a, s))
+        
 {-
 aplicá el parser de la izquierda a la entrada primera para conseguir la función. 
 Si tiene éxito, aplicá el parser de la derecha al resto de la entrada para conseguir el argumento, 
@@ -71,19 +71,21 @@ instance Applicative Parser where
     pure = pureParser
     (<*>) :: Parser (a -> b) -> Parser a -> Parser b
     fp <*> fx = P { runParser = applicativeRunner }
-        where applicativeRunner = (\input -> 
+        where applicativeRunner = (\input ->  
                 case runParser fp $ input of
                     Nothing -> Nothing
-                    Just (f, s) -> runParser (fmap f fx) $ s )
+                    Just (f, s) -> runParser (fmap f fx) $ s)
+            
 
 instance Monad Parser where
     return = pureParser
     (>>=) :: Parser a -> (a -> Parser b) -> Parser b
     fa >>= k = P { runParser = monadRunner }
-        where monadRunner = (\input ->
+        where monadRunner = (\input ->  
                 case runParser fa $ input of
                     Nothing -> Nothing
                     Just (a, s) -> runParser (k a) $ s)
+        
 
 -- Tests
 empty_input :: String
@@ -130,8 +132,6 @@ test_monad_associativity =
         parserA = (m >>= f) >>= g
         parserB = m >>= (\x -> f x >>= g)
     in test_parsers parserA parserB ""
-
-
 
 tests = [test_no_parser_empty,
     test_no_parser_no_empty,
