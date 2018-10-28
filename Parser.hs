@@ -28,7 +28,7 @@ parse p str = do
     (a, s) <- runParser p $ str
     if(s == "") then Just a
     else Nothing
-   
+
 {-
  Representa un parser que falla siempre.
  Deberías tener
@@ -52,7 +52,6 @@ pureParser a = P { runParser = (\input -> Just(a, input) )}
 Deberías tener
 parse (fmap f p) input == fmap f (parse p input)
 para cualquier f, p e input.
-parse (fmap (\x -> x + 2) pureParser 4) "" == fmap (\x -> x + 2) (parse (pureParser 4) "" )
 -}
 instance Functor Parser where
     fmap :: (a -> b) -> Parser a -> Parser b
@@ -61,7 +60,7 @@ instance Functor Parser where
                 case runParser p $ input of
                     Nothing -> Nothing
                     Just (a, s) -> Just (f a, s))
-        
+
 {-
 aplicá el parser de la izquierda a la entrada primera para conseguir la función. 
 Si tiene éxito, aplicá el parser de la derecha al resto de la entrada para conseguir el argumento, 
@@ -71,21 +70,19 @@ instance Applicative Parser where
     pure = pureParser
     (<*>) :: Parser (a -> b) -> Parser a -> Parser b
     fp <*> fx = P { runParser = applicativeRunner }
-        where applicativeRunner = (\input ->  
+        where applicativeRunner = (\input ->
                 case runParser fp $ input of
                     Nothing -> Nothing
                     Just (f, s) -> runParser (fmap f fx) $ s)
-            
 
 instance Monad Parser where
     return = pureParser
     (>>=) :: Parser a -> (a -> Parser b) -> Parser b
     fa >>= k = P { runParser = monadRunner }
-        where monadRunner = (\input ->  
+        where monadRunner = (\input ->
                 case runParser fa $ input of
                     Nothing -> Nothing
                     Just (a, s) -> runParser (k a) $ s)
-        
 
 -- ## Basic Tests ##
 empty_input :: String
@@ -122,53 +119,56 @@ other_tests = [
     test_applicative_no_empty]
 
 -- ## Test Law Function ##
-test_parsers p1 p2 input = (runParser p1 $ input) == (runParser p2 $ input)
+test_parsers p1 p2 = 
+    let empty_result = (runParser p1 $ empty_input) == (runParser p2 $ empty_input)
+        no_empty_result = (runParser p1 $ no_empty_input) == (runParser p2 $ no_empty_input)
+    in empty_result == no_empty_result
 
 -- ## Test Functor Laws ##
--- Identity :: fmap id = id
+-- Identity :: fmap id $ m ≡ id $ m
 test_functor_identity = 
     let m = pureParser 4
         parserA = id $ m
         parserB = fmap id $ m
-    in test_parsers parserA parserB ""
--- Associativity :: fmap (f . g) = (fmap f) . (fmap g)
+    in test_parsers parserA parserB
+-- Associativity :: fmap (f . g) $ m ≡ (fmap f) . (fmap g) $ m
 test_functor_associativity = 
     let m = pureParser 4
         f = (*2)
         g = (+1)
         parserA = fmap (f . g) $ m
         parserB = (fmap f) . (fmap g) $ m
-    in test_parsers parserA parserB ""
+    in test_parsers parserA parserB
 
 -- ## Test Applicative Laws ##
--- Identity :: pure id <*> v = v
+-- Identity :: pure id <*> m ≡ m
 test_applicative_identity =
-    let v = pureParser 4
-        parserA = pureParser id <*> v
-        parserB = v
-    in test_parsers parserA parserB ""
--- Homomorphism :: pure f <*> pure x = pure (f x)
+    let m = pureParser 4
+        parserA = pureParser id <*> m
+        parserB = m
+    in test_parsers parserA parserB
+-- Homomorphism :: pure f <*> pure x ≡ pure (f x)
 test_applicative_homomorphism = 
     let x = 4
         f = (+1)
         parserA = pureParser f <*> pureParser x
         parserB = pureParser (f x)
-    in test_parsers parserA parserB ""
--- Interchange :: u <*> pure y = pure ($ y) <*> u
+    in test_parsers parserA parserB
+-- Interchange :: u <*> pure y ≡ pure ($ y) <*> u
 test_applicative_interchange = 
     let u = pureParser (+1)
         y = 4
         parserA = u <*> pureParser y
         parserB = pureParser ($ y) <*> u
-    in test_parsers parserA parserB ""
--- Composition :: u <*> (v <*> w) = pure (.) <*> u <*> v <*> w
+    in test_parsers parserA parserB
+-- Composition :: u <*> (v <*> w) ≡ pure (.) <*> u <*> v <*> w
 test_applicative_composition = 
     let u = pureParser (+1)
         v = pureParser (*2)
         w = pureParser 4
         parserA = u <*> (v <*> w)
         parserB = pureParser (.) <*> u <*> v <*> w
-    in test_parsers parserA parserB ""
+    in test_parsers parserA parserB
 
 -- ## Test Monad Laws ##
 -- Left identity :: return a >>= f ≡ f a
@@ -177,13 +177,13 @@ test_monad_left_identity =
         f = pureParser . (+1)
         parserA = pureParser a >>= f
         parserB = f a
-    in test_parsers parserA parserB ""
+    in test_parsers parserA parserB
 -- Right identity :: m >>= return ≡ m
 test_monad_right_identity = 
     let m = pureParser 4
         parserA = m >>= return
         parserB = m
-    in test_parsers parserA parserB  ""
+    in test_parsers parserA parserB
 -- Associativity :: (m >>= f) >>= g ≡ m >>= (\x -> f x >>= g)
 test_monad_associativity = 
     let m = pureParser 4
@@ -191,11 +191,11 @@ test_monad_associativity =
         g = pureParser . (*2)
         parserA = (m >>= f) >>= g
         parserB = m >>= (\x -> f x >>= g)
-    in test_parsers parserA parserB ""
+    in test_parsers parserA parserB
 
 -- ## Test Laws ##
 test_laws = [
-    test_functor_identity,
+    test_functor_identity, 
     test_functor_associativity,
     test_applicative_identity,
     test_applicative_homomorphism,
