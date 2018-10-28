@@ -2,12 +2,20 @@
 
 module FantasyLand where 
 
-{- Definí el tipo Parser, cuyo kind es * -> *: 
-Un valor de tipo Parser a es una función que
-toma una String (que representa el resto de la entrada 
-en un momento dado) y devuelve o Nothing si el parsing 
-fracasa, o sino devuelve un valor de tipo a y el resto
-de la entrada.-}
+{- Here is the type Parser, whose kind is * -> *:
+A velue of type 'Parser a' is a function that takes a String
+(which represents the rest of the input at any given moment)
+and maybe returns:
+  (a, String)
+  ^   ^
+  .  .
+  .  .
+  .  . ............... Being 'String' the parsed input
+  .
+  .
+  . .................. Being 'a' the rest of the input, and String
+-}
+
 
 data Parser a = P {
     {-Usá esto en lugar de hacer pattern matching explícito 
