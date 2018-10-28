@@ -61,6 +61,23 @@ instance Functor Parser where
             Just (a, s) -> Just (f a, s)
         )}
 
+
+{-
+aplicá el parser de la izquierda a la entrada primera para conseguir la función. 
+Si tiene éxito, aplicá el parser de la derecha al resto de la entrada para conseguir el argumento, 
+y devuelve la función aplicada al argumento, y el resto de la entrada en el argumento correcto.
+-}
+instance Applicative Parser where
+    pure = pureParser
+    (<*>) :: Parser (a -> b) -> Parser a -> Parser b
+    fp <*> fx = P { runParser = applicativeRunner }
+        where applicativeRunner = (\input -> 
+                case runParser fp $ input of
+                    Nothing -> Nothing
+                    Just (f, s) -> runParser (fmap f fx) $ s )
+
+
+
 -- Tests
 empty_input :: String
 empty_input = ""
@@ -78,9 +95,16 @@ f_test :: Int -> String
 f_test = show
 test_funtor_empty = parse (fmap f_test test_parser) empty_input == fmap f_test (parse test_parser empty_input)
 test_funtor_no_empty = parse (fmap f_test test_parser) no_empty_input == fmap f_test (parse test_parser no_empty_input)
+
+-- Applicative Law Tests
+test_applicative_empty = parse (pureParser f_test <*> test_parser) empty_input == Just "4"
+test_applicative_no_empty = parse (pureParser f_test <*> test_parser) no_empty_input == Nothing
+
 tests = [test_no_parser_empty,
     test_no_parser_no_empty,
     test_pure_empty,
     test_pure_no_empty,
     test_funtor_empty,
-    test_funtor_no_empty]
+    test_funtor_no_empty,
+    test_applicative_empty,
+    test_applicative_no_empty]
