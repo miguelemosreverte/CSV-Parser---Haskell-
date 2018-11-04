@@ -1,5 +1,5 @@
 {-# LANGUAGE InstanceSigs #-}
-
+--http://dev.stephendiehl.com/fun/002_parsers.html
 module FantasyLand where 
 
 {- Definí el tipo Parser, cuyo kind es * -> *: 
@@ -84,6 +84,17 @@ instance Monad Parser where
                     Nothing -> Nothing
                     Just (a, s) -> runParser (k a) $ s)
 
+{-
+    Parser primitivo que fracasa si la entrada es vacía, 
+    y sino saca un carácter de la entrada
+-}
+anyChar :: Parser Char 
+anyChar = P { runParser = charConsumer }
+        where charConsumer = (\input -> 
+                case input of 
+                    []      -> Nothing
+                    (c:cs)  -> Just(c,cs))
+
 -- ## Basic Tests ##
 empty_input :: String
 empty_input = ""
@@ -116,7 +127,8 @@ other_tests = [
     test_funtor_empty,
     test_funtor_no_empty,
     test_applicative_empty,
-    test_applicative_no_empty]
+    test_applicative_no_empty,
+    test_anyChar_Parser]
 
 -- ## Test Law Function ##
 test_parsers p1 p2 = 
@@ -205,5 +217,14 @@ test_laws = [
     test_monad_right_identity,
     test_monad_associativity]
 
+-- ## Test Parsers ##
+test_anyChar_Parser :: Bool
+test_anyChar_Parser = 
+    let cl = ['a','s']
+        p1  = (parse anyChar "" == Nothing)
+        p2  = (parse anyChar ['x'] == Just 'x')
+        p3  = (parse anyChar cl == Nothing)
+    in (p1 && p2 && p3)
+  
 -- ## All Tests ##
 all_tests = [other_tests, test_laws]
