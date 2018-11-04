@@ -116,6 +116,21 @@ anyCharBut c = do
     then pureParser c'
     else noParser
 
+{- 
+Probá usar el parser de la izquierda. 
+Si es exitoso, lo usa, sino ejecuta el segundo parser en su entrada. 
+Esto implementa el backtracking de manera muy ingenua 
+(entonces no te esperes a que esto tenga muy buena performancia – 
+existen librerias de parsers muy optimizadas en este aspecto).  
+-}
+orElse :: Parser a -> Parser a -> Parser a
+p1 `orElse` p2 = P { runParser = orElseRunner }
+    where 
+    orElseRunner input = 
+        case runParser p1 input of
+            Nothing -> runParser p2 input
+            x -> x
+
 -- ## Basic Tests ##
 empty_input :: String
 empty_input = ""
@@ -151,7 +166,8 @@ other_tests = [
     test_applicative_no_empty,
     test_anyChar_Parser,
     test_char_Parser,
-    test_anyCharBut_Parser]
+    test_anyCharBut_Parser,
+    test_orElse_Combinator]
 
 -- ## Test Law Function ##
 test_parsers p1 p2 = 
@@ -266,6 +282,31 @@ test_anyCharBut_Parser =
         p2 = parse parser "b" == (Just 'b')
         p3 = parse parser "more" == Nothing -- this test is redundant as it is defined in anyChar
     in (p1 && p2 && p3)
+
+
+-- Helper test function
+-- tests 2 parser with empty and non_empty_inputs
+test_empty_and_no_empty_input :: Eq a => Parser a -> Parser a -> Bool
+test_empty_and_no_empty_input parserA parserB =
+    let p1 = parse parserA empty_input
+        p2 = parse parserB empty_input
+        p3 = parse parserA no_empty_input
+        p4 = parse parserB no_empty_input
+    in (p1 == p2) && (p3 == p4)
+
+test_orElse_Combinator :: Bool
+test_orElse_Combinator = 
+    let
+        p  = pureParser 4
+        p1 = test_empty_and_no_empty_input (noParser `orElse` p) p
+        x  = 5
+        p2 = test_empty_and_no_empty_input (pureParser x `orElse` p) (pureParser x)
+        p3 = parse (anyChar `orElse` pureParser '☃') "" == Just '☃'
+        c = 'a'
+        p4 = parse (anyChar `orElse` pureParser '☃') [c] == Just c
+        xs = "more than one char"
+        p5 = parse (anyChar `orElse` pureParser '☃') xs == Nothing
+    in (p1 && p2 && p3 && p4 && p5)
 
 -- ## All Tests ##
 all_tests = [other_tests, test_laws]
