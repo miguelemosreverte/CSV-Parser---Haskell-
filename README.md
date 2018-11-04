@@ -16,3 +16,6 @@ parseCSV = many parseLine
         char '"'
         return content
 ```
+
+-- to verify all_tests run:
+and . concat $ all_tests

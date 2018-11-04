@@ -1,5 +1,6 @@
 {-# LANGUAGE InstanceSigs #-}
---http://dev.stephendiehl.com/fun/002_parsers.html
+-- http://dev.stephendiehl.com/fun/002_parsers.html
+-- https://cs.famaf.unc.edu.ar/~hoffmann/pd18/practico02.html
 module FantasyLand where 
 
 {- Definí el tipo Parser, cuyo kind es * -> *: 
@@ -85,15 +86,35 @@ instance Monad Parser where
                     Just (a, s) -> runParser (k a) $ s)
 
 {-
-    Parser primitivo que fracasa si la entrada es vacía, 
-    y sino saca un carácter de la entrada
+Parser primitivo que fracasa si la entrada es vacía, 
+y sino saca un carácter de la entrada
 -}
 anyChar :: Parser Char 
 anyChar = P { runParser = charConsumer }
-        where charConsumer = (\input -> 
-                case input of 
-                    []      -> Nothing
-                    (c:cs)  -> Just(c,cs))
+    where 
+    charConsumer ""     = Nothing
+    charConsumer (c:cs) = Just(c,cs)
+
+{- 
+Las siguientes definiciones no rompen la abstracción introducida por el tipo de datos Parser,
+es decir, solo usando combinadores introducidos más arriba. 
+-}
+
+{- Devuelve un parser que consume solo el char enviado como parametro -}
+char :: Char -> Parser ()
+char c = do
+    c' <- anyChar
+    if(c == c') 
+    then pureParser ()
+    else noParser
+
+{- Devuelve un parser que consume cualquier char que no sea el enviado como parametro -}
+anyCharBut :: Char -> Parser Char
+anyCharBut c = do
+    c' <- anyChar
+    if(c /= c') 
+    then pureParser c'
+    else noParser
 
 -- ## Basic Tests ##
 empty_input :: String
@@ -128,7 +149,9 @@ other_tests = [
     test_funtor_no_empty,
     test_applicative_empty,
     test_applicative_no_empty,
-    test_anyChar_Parser]
+    test_anyChar_Parser,
+    test_char_Parser,
+    test_anyCharBut_Parser]
 
 -- ## Test Law Function ##
 test_parsers p1 p2 = 
@@ -226,5 +249,23 @@ test_anyChar_Parser =
         p3  = (parse anyChar cl == Nothing)
     in (p1 && p2 && p3)
   
+test_char_Parser :: Bool
+test_char_Parser =
+    let c = 'a'
+        parser = char c
+        p1 = parse parser "a" == (Just ())
+        p2 = parse parser "b" == Nothing
+        p3 = parse parser "more" == Nothing -- this test is redundant as it is defined in anyChar
+    in (p1 && p2 && p3)
+
+test_anyCharBut_Parser :: Bool
+test_anyCharBut_Parser =
+    let c = 'a'
+        parser = anyCharBut c
+        p1 = parse parser "a" == Nothing
+        p2 = parse parser "b" == (Just 'b')
+        p3 = parse parser "more" == Nothing -- this test is redundant as it is defined in anyChar
+    in (p1 && p2 && p3)
+
 -- ## All Tests ##
 all_tests = [other_tests, test_laws]
