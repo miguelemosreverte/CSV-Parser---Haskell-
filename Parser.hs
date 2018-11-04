@@ -57,10 +57,10 @@ para cualquier f, p e input.
 instance Functor Parser where
     fmap :: (a -> b) -> Parser a -> Parser b
     fmap f p = P { runParser = functorRunner }
-        where functorRunner = (\input ->  
-                case runParser p $ input of
-                    Nothing -> Nothing
-                    Just (a, s) -> Just (f a, s))
+        where 
+        functorRunner input = case runParser p $ input of
+            Nothing -> Nothing
+            Just (a, s) -> Just (f a, s)
 
 {-
 aplicá el parser de la izquierda a la entrada primera para conseguir la función. 
@@ -71,19 +71,19 @@ instance Applicative Parser where
     pure = pureParser
     (<*>) :: Parser (a -> b) -> Parser a -> Parser b
     fp <*> fx = P { runParser = applicativeRunner }
-        where applicativeRunner = (\input ->
-                case runParser fp $ input of
-                    Nothing -> Nothing
-                    Just (f, s) -> runParser (fmap f fx) $ s)
+        where 
+        applicativeRunner input = case runParser fp $ input of
+            Nothing -> Nothing
+            Just (f, s) -> runParser (fmap f fx) $ s
 
 instance Monad Parser where
     return = pureParser
     (>>=) :: Parser a -> (a -> Parser b) -> Parser b
     fa >>= k = P { runParser = monadRunner }
-        where monadRunner = (\input ->
-                case runParser fa $ input of
-                    Nothing -> Nothing
-                    Just (a, s) -> runParser (k a) $ s)
+        where 
+        monadRunner input = case runParser fa $ input of
+            Nothing -> Nothing
+            Just (a, s) -> runParser (k a) $ s
 
 {-
 Parser primitivo que fracasa si la entrada es vacía, 
@@ -131,6 +131,14 @@ p1 `orElse` p2 = P { runParser = orElseRunner }
             Nothing -> runParser p2 input
             x -> x
 
+{-
+Aplica un parser dado tantas veces como se pueda hasta que falle, 
+y luego devuelve el resultado como una lista. 
+De vuelta, implementalo sin romper la abstracción, usando los combinadores vistos más arriba.
+-}
+many :: Parser a -> Parser [a]
+many parser = undefined
+        
 -- ## Basic Tests ##
 empty_input :: String
 empty_input = ""
