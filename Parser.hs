@@ -137,14 +137,21 @@ y luego devuelve el resultado como una lista.
 De vuelta, implementalo sin romper la abstracción, usando los combinadores vistos más arriba.
 -}
 many :: Parser a -> Parser [a]
-many parser = P { runParser = manyRunner }
-    where 
-    manyRunner input = manyRunnerRecursive input []
-    manyRunnerRecursive input content =
-        case runParser parser input of
-            Nothing -> Just(content, input)
-            Just(a,s) -> manyRunnerRecursive s (content ++ [a])
+many parser = manyRunner []
+    where manyRunner content =
+            let p1 = do a <- parser
+                        manyRunner (content ++ [a])
+            in  p1 `orElse` (pureParser content)
         
+{-
+p1 sepBy p2 aplica p1, luego p2, luego p1 y así. Tiene éxito si la primera invocación de p1 falla, 
+en este caso devuelve la string vacía. También tiene éxito si cualquier invocación de p2 falla, 
+en cual caso devuelve los resultados de todas las invocaciones de p1 como lista. 
+De vuelta, implementalo sin romper la abstracción, usando los combinadores vistos más arriba.
+-}
+sepBy :: Parser a -> Parser () -> Parser [a]
+p1 `sepBy` p2 = undefined
+
 -- ## Basic Tests ##
 empty_input :: String
 empty_input = ""
