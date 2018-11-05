@@ -58,9 +58,9 @@ instance Functor Parser where
     fmap :: (a -> b) -> Parser a -> Parser b
     fmap f p = P { runParser = functorRunner }
         where 
-        functorRunner input = case runParser p $ input of
-            Nothing -> Nothing
-            Just (a, s) -> Just (f a, s)
+        functorRunner input = do
+            (a,s) <- runParser p $ input
+            pure (f a, s)
 
 {-
 aplicá el parser de la izquierda a la entrada primera para conseguir la función. 
@@ -72,19 +72,18 @@ instance Applicative Parser where
     (<*>) :: Parser (a -> b) -> Parser a -> Parser b
     fp <*> fx = P { runParser = applicativeRunner }
         where 
-        applicativeRunner input = case runParser fp $ input of
-            Nothing -> Nothing
-            Just (f, s) -> runParser (fmap f fx) $ s
+        applicativeRunner input = do
+            (f,s) <- runParser fp $ input
+            runParser (fmap f fx) $ s
 
 instance Monad Parser where
     return = pureParser
     (>>=) :: Parser a -> (a -> Parser b) -> Parser b
     fa >>= k = P { runParser = monadRunner }
         where 
-        monadRunner input = case runParser fa $ input of
-            Nothing -> Nothing
-            Just (a, s) -> runParser (k a) $ s
-
+            monadRunner input = do
+                (a,s)  <- runParser fa $ input
+                runParser (k a) $ s
 {-
 Parser primitivo que fracasa si la entrada es vacía, 
 y sino saca un carácter de la entrada
@@ -150,7 +149,11 @@ en cual caso devuelve los resultados de todas las invocaciones de p1 como lista.
 De vuelta, implementalo sin romper la abstracción, usando los combinadores vistos más arriba.
 -}
 sepBy :: Parser a -> Parser () -> Parser [a]
-p1 `sepBy` p2 = undefined
+p1 `sepBy` p2 = (many sepByRunner)
+    where sepByRunner = do  
+            a <- p1
+            p2
+            pureParser a
 
 -- ## Basic Tests ##
 empty_input :: String
