@@ -137,7 +137,13 @@ y luego devuelve el resultado como una lista.
 De vuelta, implementalo sin romper la abstracción, usando los combinadores vistos más arriba.
 -}
 many :: Parser a -> Parser [a]
-many parser = undefined
+many parser = P { runParser = manyRunner }
+    where 
+    manyRunner input = manyRunnerRecursive input []
+    manyRunnerRecursive input content =
+        case runParser parser input of
+            Nothing -> Just(content, input)
+            Just(a,s) -> manyRunnerRecursive s (content ++ [a])
         
 -- ## Basic Tests ##
 empty_input :: String
@@ -175,7 +181,8 @@ other_tests = [
     test_anyChar_Parser,
     test_char_Parser,
     test_anyCharBut_Parser,
-    test_orElse_Combinator]
+    test_orElse_Combinator,
+    test_many_Combinator]
 
 -- ## Test Law Function ##
 test_parsers p1 p2 = 
@@ -316,5 +323,12 @@ test_orElse_Combinator =
         p5 = parse (anyChar `orElse` pureParser '☃') xs == Nothing
     in (p1 && p2 && p3 && p4 && p5)
 
+test_many_Combinator :: Bool
+test_many_Combinator =
+    let p1 = parse (many anyChar) "manu" == Just "manu"
+        p2 = parse (many noParser) "" == (Just [] :: Maybe String)
+        p3 = parse ((many $ anyCharBut '\n') <* char '\n') ("manu" ++ "\n") == Just "manu"
+    in (p1 && p2 && p3)
+    
 -- ## All Tests ##
 all_tests = [other_tests, test_laws]
