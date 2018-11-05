@@ -27,7 +27,8 @@ data Parser a = P {
 parse :: Parser a -> String -> Maybe a
 parse p str = do 
     (a, s) <- runParser p $ str
-    if(s == "") then Just a
+    if(s == "") 
+    then Just a
     else Nothing
 
 {-
@@ -81,9 +82,9 @@ instance Monad Parser where
     (>>=) :: Parser a -> (a -> Parser b) -> Parser b
     fa >>= k = P { runParser = monadRunner }
         where 
-            monadRunner input = do
-                (a,s)  <- runParser fa $ input
-                runParser (k a) $ s
+        monadRunner input = do
+            (a,s)  <- runParser fa $ input
+            runParser (k a) $ s
 {-
 Parser primitivo que fracasa si la entrada es vacía, 
 y sino saca un carácter de la entrada
@@ -126,22 +127,32 @@ orElse :: Parser a -> Parser a -> Parser a
 p1 `orElse` p2 = P { runParser = orElseRunner }
     where 
     orElseRunner input = 
-        case runParser p1 input of
+        case parse p1 input of
             Nothing -> runParser p2 input
-            x -> x
-
+            otherwise -> runParser p1 input
+            
 {-
 Aplica un parser dado tantas veces como se pueda hasta que falle, 
 y luego devuelve el resultado como una lista. 
 De vuelta, implementalo sin romper la abstracción, usando los combinadores vistos más arriba.
 -}
 many :: Parser a -> Parser [a]
-many parser = manyRunner []
-    where manyRunner content =
-            let p1 = do a <- parser
-                        manyRunner (content ++ [a])
-            in  p1 `orElse` (pureParser content)
-        
+many parser = P { runParser = (manyRunner [] parser) }
+    
+manyRunner :: [a] -> Parser a -> String -> Maybe ([a], String)
+manyRunner content p input = 
+    case parse p input of
+        Nothing -> Just(content, input)
+        otherwise -> do
+            (a, s) <- runParser p $ input
+            manyRunner (content ++ [a]) p s
+
+
+
+-- parse (many $ anyCharBut 'z') "alazoz"
+-- runParser (many $ anyCharBut 'z') "azlaoz"
+
+
 {-
 p1 sepBy p2 aplica p1, luego p2, luego p1 y así. Tiene éxito si la primera invocación de p1 falla, 
 en este caso devuelve la string vacía. También tiene éxito si cualquier invocación de p2 falla, 
@@ -150,7 +161,8 @@ De vuelta, implementalo sin romper la abstracción, usando los combinadores vist
 -}
 sepBy :: Parser a -> Parser () -> Parser [a]
 p1 `sepBy` p2 = (many sepByRunner)
-    where sepByRunner = do  
+    where 
+    sepByRunner = do  
             a <- p1
             p2
             pureParser a
@@ -322,15 +334,17 @@ test_empty_and_no_empty_input parserA parserB =
 test_orElse_Combinator :: Bool
 test_orElse_Combinator = 
     let
-        p  = pureParser 4
-        p1 = test_empty_and_no_empty_input (noParser `orElse` p) p
-        x  = 5
-        p2 = test_empty_and_no_empty_input (pureParser x `orElse` p) (pureParser x)
-        p3 = parse (anyChar `orElse` pureParser '☃') "" == Just '☃'
-        c = 'a'
-        p4 = parse (anyChar `orElse` pureParser '☃') [c] == Just c
-        xs = "more than one char"
-        p5 = parse (anyChar `orElse` pureParser '☃') xs == Nothing
+        p   = pureParser 4
+        p1  = test_empty_and_no_empty_input (noParser `orElse` p) p
+        p1' = test_empty_and_no_empty_input (p `orElse` noParser) p
+        x   = 5
+        p2  = test_empty_and_no_empty_input (pureParser x `orElse` p) (pureParser x)
+        p2' = test_empty_and_no_empty_input (noParser `orElse` pureParser x) (pureParser x)
+        p3  = parse (anyChar `orElse` pureParser '☃') "" == Just '☃'
+        c   = 'a'
+        p4  = parse (anyChar `orElse` pureParser '☃') [c] == Just c
+        xs  = "more than one char"
+        p5  = parse (anyChar `orElse` pureParser '☃') xs == Nothing
     in (p1 && p2 && p3 && p4 && p5)
 
 test_many_Combinator :: Bool
@@ -342,3 +356,15 @@ test_many_Combinator =
     
 -- ## All Tests ##
 all_tests = [other_tests, test_laws]
+
+result = and.concat $ all_tests
+
+-- WIP
+yesMan = parse (anyChar `sepBy` char ',') "b,b,b"
+noMan = 
+    let p =  many (anyCharBut 'a') `orElse` many (anyChar)
+    in parse p "hola"
+shitMan =
+    let p = anyCharBut 'a' `orElse` anyChar
+    in parse p "a"
+heyMan = (result, yesMan, noMan, shitMan)
